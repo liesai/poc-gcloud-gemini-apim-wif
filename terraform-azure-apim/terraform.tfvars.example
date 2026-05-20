@@ -1,0 +1,16 @@
+publisher_email = "vous@example.com"
+
+# Recuperer l'URL avec:
+# terraform -chdir=terraform output -raw service_url
+cloud_run_url = "https://poc-gemini-api-xxxxx-uc.a.run.app"
+
+# Mode recommande: APIM managed identity + Google WIF.
+backend_auth_mode = "wif"
+
+# Mode de repli: secret partage.
+# backend_auth_mode = "shared_secret"
+# backend_api_key   = "secret-partage-a-ne-pas-commiter"
+
+location              = "canadacentral"
+api_path              = "gemini"
+subscription_required = false

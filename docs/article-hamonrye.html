@@ -1,0 +1,180 @@
+<p>L'objectif de cette POC est de deployer une API Python minimale sur Google Cloud Run, d'appeler Gemini via Vertex AI, puis de l'exposer a travers Azure API Management sans rendre Cloud Run public.</p>
+
+<p>La version finale validee utilise une federation d'identite entre Azure et Google Cloud: APIM utilise sa managed identity, Google STS accepte cette identite via Workload Identity Federation, puis APIM genere un ID token Google pour appeler Cloud Run.</p>
+
+<h2>Architecture</h2>
+
+<pre class="mermaid-source">flowchart LR
+  Client[Client HTTP] --&gt; APIM[Azure API Management&lt;br/&gt;Consumption]
+  APIM --&gt; Entra[Microsoft Entra ID&lt;br/&gt;Managed Identity token]
+  APIM --&gt; STS[Google STS&lt;br/&gt;Workload Identity Federation]
+  APIM --&gt; IAMCreds[Google IAM Credentials&lt;br/&gt;generateIdToken]
+  APIM --&gt; Run[Cloud Run prive&lt;br/&gt;FastAPI]
+  Run --&gt; Gemini[Vertex AI&lt;br/&gt;Gemini 2.5 Flash-Lite]
+
+  TerraformGCP[Terraform GCP] --&gt; WIF[Workload Identity Pool&lt;br/&gt;OIDC Azure provider]
+  TerraformGCP --&gt; Run
+  TerraformGCP --&gt; Registry[Artifact Registry]
+  TerraformGCP --&gt; Build[Cloud Build]
+  TerraformAzure[Terraform Azure] --&gt; APIM
+  TerraformAzure --&gt; Policy[APIM policy&lt;br/&gt;MI + STS + ID token]
+
+  WIF --&gt; GSA[Google service account&lt;br/&gt;APIM invoker]
+  GSA --&gt; Run</pre>
+
+<h2>Ressources deployeees</h2>
+
+<p>Cote GCP, Terraform cree ou configure:</p>
+
+<ul>
+  <li>un projet GCP dedie lorsque <code>create_project=true</code>;</li>
+  <li>les APIs Cloud Run, Cloud Build, Artifact Registry, Vertex AI, IAM, IAM Credentials, STS et Service Usage;</li>
+  <li>un repository Docker Artifact Registry;</li>
+  <li>une image applicative construite par Cloud Build;</li>
+  <li>un service Cloud Run prive avec enforcement IAM;</li>
+  <li>un service account Cloud Run avec <code>roles/aiplatform.user</code>;</li>
+  <li>un service account Google dedie a APIM avec <code>roles/run.invoker</code> sur Cloud Run;</li>
+  <li>un Workload Identity Pool et un provider OIDC Azure;</li>
+  <li>une liaison <code>roles/iam.workloadIdentityUser</code> entre la managed identity APIM et le service account Google.</li>
+</ul>
+
+<p>Cote Azure, Terraform cree:</p>
+
+<ul>
+  <li>un Resource Group;</li>
+  <li>une instance Azure API Management en SKU <code>Consumption_0</code>;</li>
+  <li>une managed identity system-assigned sur APIM;</li>
+  <li>une API APIM importee depuis une definition OpenAPI minimale;</li>
+  <li>une policy APIM qui orchestre l'authentification vers Google Cloud.</li>
+</ul>
+
+<h2>Workflow d'authentification</h2>
+
+<p>Le chemin d'appel valide est le suivant:</p>
+
+<ol>
+  <li>le client appelle l'URL APIM;</li>
+  <li>APIM recupere un token Microsoft Entra ID avec sa managed identity;</li>
+  <li>APIM envoie ce token a Google Security Token Service;</li>
+  <li>Google STS valide le token via Workload Identity Federation et retourne un access token Google court;</li>
+  <li>APIM appelle IAM Credentials <code>generateIdToken</code> pour le service account Google autorise;</li>
+  <li>APIM appelle Cloud Run avec <code>Authorization: Bearer &lt;id-token-google&gt;</code>;</li>
+  <li>Cloud Run appelle Vertex AI Gemini avec son propre service account.</li>
+</ol>
+
+<p>Ce flux evite un secret long terme entre APIM et Cloud Run. La frontiere d'acces est geree par IAM et par des tokens courts.</p>
+
+<h2>API exposee</h2>
+
+<p>L'application FastAPI expose:</p>
+
+<pre class="code-block"><code class="language-text">GET  /healthz
+GET  /status
+POST /generate</code></pre>
+
+<p><code>/healthz</code> sert de sonde Cloud Run. <code>/status</code> et <code>/generate</code> sont exposes via APIM.</p>
+
+<p>Payload de generation:</p>
+
+<pre class="code-block"><code class="language-json">{
+  "prompt": "Reponds en francais en une phrase: que valide cette POC ?"
+}</code></pre>
+
+<h2>Validation</h2>
+
+<p>Les tests se lancent depuis le repertoire de la POC:</p>
+
+<pre class="code-block"><code class="language-bash">cd /home/marc/poc-gcloud-gemini</code></pre>
+
+<p>Les endpoints APIM de cette instance sont:</p>
+
+<pre class="code-block"><code class="language-text">https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/status
+https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/generate</code></pre>
+
+<p>L'appel direct a Cloud Run sans identite Google est refuse:</p>
+
+<pre class="code-block"><code class="language-bash">URL="$(terraform -chdir=terraform output -raw service_url)"
+
+curl -sS -o /tmp/direct -w '%{http_code}\n' \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"direct"}' \
+  "$URL/generate"</code></pre>
+
+<p>Le resultat attendu est <code>403</code>.</p>
+
+<p>L'appel via APIM fonctionne:</p>
+
+<pre class="code-block"><code class="language-bash">curl -sS "$(terraform -chdir=terraform-azure-apim output -raw gemini_status_url)" | jq .</code></pre>
+
+<pre class="code-block"><code class="language-json">{
+  "status": "ok",
+  "model": "gemini-2.5-flash-lite",
+  "location": "global"
+}</code></pre>
+
+<p>Pour tester la generation:</p>
+
+<pre class="code-block"><code class="language-bash">./scripts/call_apim.sh "Reponds en francais en une phrase: valide le chemin APIM Managed Identity vers Cloud Run."</code></pre>
+
+<p>Equivalent manuel:</p>
+
+<pre class="code-block"><code class="language-bash">APIM_URL="$(terraform -chdir=terraform-azure-apim output -raw gemini_generate_url)"
+
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF."}' \
+  "$APIM_URL" | jq .</code></pre>
+
+<p><code>POST /gemini/generate</code> via APIM retourne <code>200 OK</code> avec un JSON contenant <code>model</code>, <code>location</code> et <code>text</code>.</p>
+
+<h2>Workflow de deploiement</h2>
+
+<p>Le deploiement est volontairement separe en deux states Terraform: un pour GCP, un pour Azure. Cela permet de supprimer APIM sans toucher aux ressources GCP, ou inversement.</p>
+
+<pre class="code-block"><code class="language-bash">terraform -chdir=terraform init
+terraform -chdir=terraform apply
+
+terraform -chdir=terraform-azure-apim init
+terraform -chdir=terraform-azure-apim apply \
+  -var='backend_auth_mode=wif' \
+  -var="google_sts_audience=$(terraform -chdir=terraform output -raw azure_wif_provider_audience)" \
+  -var="google_service_account_email=$(terraform -chdir=terraform output -raw apim_invoker_service_account)"</code></pre>
+
+<p>En pratique, l'identite managée APIM est connue apres creation d'APIM. On la reporte ensuite cote GCP pour creer le provider WIF et fermer Cloud Run au public.</p>
+
+<h2>Disponibiliser a plusieurs clients</h2>
+
+<p>Pour exposer l'API a plusieurs clients, APIM doit devenir le point de gestion des consommateurs:</p>
+
+<ul>
+  <li>creer un produit APIM par usage: sandbox, partenaire, interne ou production;</li>
+  <li>activer <code>subscription_required=true</code> pour identifier chaque client;</li>
+  <li>creer une subscription par client ou par application cliente;</li>
+  <li>appliquer des quotas et du rate limiting par produit ou par subscription;</li>
+  <li>journaliser l'identifiant de subscription dans les logs;</li>
+  <li>versionner les routes, par exemple <code>/gemini/v1/generate</code>;</li>
+  <li>revoquer un client en suspendant ou supprimant sa subscription APIM;</li>
+  <li>garder Cloud Run prive et ne jamais distribuer son URL comme endpoint officiel.</li>
+</ul>
+
+<p>Le flux d'onboarding d'un client devient simple: creer une subscription APIM, l'associer a un produit, appliquer les limites attendues, fournir l'URL APIM et la cle de subscription, puis suivre la consommation dans APIM et Cloud Logging.</p>
+
+<h2>Bonnes pratiques retenues</h2>
+
+<ul>
+  <li>pas de cle de service account locale;</li>
+  <li>pas de secret long terme entre APIM et Cloud Run en mode WIF;</li>
+  <li>Cloud Run prive avec enforcement IAM;</li>
+  <li>service account Google dedie pour APIM avec uniquement <code>roles/run.invoker</code>;</li>
+  <li>service account applicatif distinct pour Vertex AI;</li>
+  <li>tokens courts generes a la demande;</li>
+  <li>states Terraform separes pour GCP et Azure;</li>
+  <li><code>min_instance_count=0</code> pour limiter les couts idle.</li>
+</ul>
+
+<h2>Desinstallation</h2>
+
+<pre class="code-block"><code class="language-bash">terraform -chdir=terraform-azure-apim destroy
+terraform -chdir=terraform destroy</code></pre>
+
+<p>Si <code>create_project=true</code>, la destruction Terraform cote GCP supprime le projet dedie et les ressources associees.</p>

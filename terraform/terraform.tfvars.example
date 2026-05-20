@@ -1,0 +1,28 @@
+# Copier ce fichier vers terraform.tfvars et adapter les valeurs.
+
+# Option A: Terraform cree un nouveau projet.
+create_project      = true
+billing_account_id = "000000-000000-000000"
+
+# Option B: utiliser un projet existant.
+# create_project = false
+# project_id     = "mon-projet-gcp"
+
+region          = "us-central1"
+vertex_location = "global"
+gemini_model    = "gemini-2.5-flash-lite"
+
+# Mode simple: Cloud Run public + secret applicatif.
+# allow_unauthenticated   = true
+# enable_internal_api_key = true
+# enable_azure_wif        = false
+
+# Mode recommande pour APIM: Cloud Run prive + Workload Identity Federation.
+allow_unauthenticated   = false
+enable_internal_api_key = false
+enable_azure_wif        = true
+
+# A renseigner apres creation de la managed identity APIM.
+# azure_tenant_id          = "00000000-0000-0000-0000-000000000000"
+# azure_apim_principal_id  = "00000000-0000-0000-0000-000000000000"
+# azure_wif_audience       = "00000000-0000-0000-0000-000000000000"
