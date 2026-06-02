@@ -169,6 +169,115 @@ https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/status
 https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/generate
 ```
 
+## Deploiement Cloud Run seul avec Artifactory
+
+Un module separe est disponible dans `terraform-cloud-run-only/` pour deployer uniquement Cloud Run dans un socle GCP deja livre. Il ne cree pas le projet, n'active pas les APIs, ne configure pas l'interconnect et ne configure pas de load balancer.
+
+Le flux cible est:
+
+1. GitHub Actions construit l'image Docker depuis `app/`;
+2. l'image est poussee dans Artifactory;
+3. Cloud Run lit cette image via un repository Artifact Registry remote pointant vers Artifactory;
+4. Terraform applique uniquement le service Cloud Run, son service account optionnel, les invokers IAM optionnels et les variables Gemini.
+
+Modeles Gemini disponibilises:
+
+```text
+gemini-3.5-flash
+gemini-2.5-flash
+gemini-3.1-flash
+gemini-2.5-flash-lite
+gemini-3-pro
+gemini-2.5-pro
+gemini-3.1-pro
+gemini-3-flash
+```
+
+L'API accepte maintenant un champ optionnel `model` sur `POST /generate`. Si le champ est absent, elle utilise `GEMINI_MODEL`. Si le modele demande n'est pas dans `GEMINI_MODELS`, l'API retourne `400`.
+
+Exemple:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Resume ce besoin en une phrase.","model":"gemini-2.5-flash"}' \
+  "$URL/generate" | jq .
+```
+
+### Variables Terraform principales
+
+Exemple de configuration:
+
+```hcl
+project_id = "mon-projet-gcp"
+
+region          = "us-central1"
+vertex_location = "global"
+
+service_name = "gemini-api"
+
+artifactory_registry_url      = "artifactory.example.com/docker-local"
+image_name                    = "gemini-api"
+image_tag                     = "a-remplacer-par-le-sha"
+artifact_remote_repository_id = "artifactory-remote"
+
+create_artifact_remote_repository = false
+create_service_account            = true
+grant_vertex_user_role            = true
+
+allow_unauthenticated = false
+invoker_members = [
+  # "serviceAccount:frontal-invoker@mon-projet-gcp.iam.gserviceaccount.com",
+]
+```
+
+Le backend Terraform est GCS. En local ou dans CI, fournir un fichier `backend.hcl` non versionne:
+
+```hcl
+bucket = "mon-bucket-tfstate"
+prefix = "poc-gcloud-gemini/cloud-run"
+```
+
+Commandes locales:
+
+```bash
+terraform -chdir=terraform-cloud-run-only init -backend-config=backend.hcl
+terraform -chdir=terraform-cloud-run-only plan
+terraform -chdir=terraform-cloud-run-only apply
+```
+
+### Pipeline GitHub Actions
+
+Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
+
+- authentification GCP via Workload Identity Federation;
+- login Docker sur Artifactory;
+- build et push de l'image;
+- `terraform init`, `validate`, puis `apply` sur `terraform-cloud-run-only/`.
+
+Secrets GitHub requis:
+
+```text
+GCP_WORKLOAD_IDENTITY_PROVIDER
+GCP_SERVICE_ACCOUNT
+ARTIFACTORY_USERNAME
+ARTIFACTORY_PASSWORD
+```
+
+Variables GitHub requises:
+
+```text
+GCP_PROJECT_ID
+GCP_REGION
+VERTEX_LOCATION
+ARTIFACTORY_REGISTRY_URL
+ARTIFACT_REMOTE_REPOSITORY_ID
+TF_STATE_BUCKET
+TF_STATE_PREFIX
+```
+
+Le workflow se lance manuellement depuis GitHub Actions. Par defaut, le tag image est le SHA du commit; il peut etre surcharge par l'input `image_tag`.
+
 ## Tests
 
 Se placer dans le repertoire de la POC:
