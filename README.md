@@ -250,7 +250,7 @@ terraform -chdir=terraform-cloud-run-only apply
 
 Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 
-- authentification GCP via Workload Identity Federation;
+- authentification GCP avec la cle JSON du service account Terraform;
 - login Docker sur Artifactory;
 - build et push de l'image;
 - `terraform init`, `validate`, puis `apply` sur `terraform-cloud-run-only/`.
@@ -258,8 +258,7 @@ Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 Secrets GitHub requis:
 
 ```text
-GCP_WORKLOAD_IDENTITY_PROVIDER
-GCP_SERVICE_ACCOUNT
+GCP_TERRAFORM_SA_KEY
 ARTIFACTORY_USERNAME
 ARTIFACTORY_PASSWORD
 ```

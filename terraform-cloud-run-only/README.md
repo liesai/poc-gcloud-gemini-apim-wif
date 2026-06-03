@@ -44,8 +44,7 @@ Le workflow `.github/workflows/deploy-cloud-run.yml` est manuel. Il attend:
 
 Secrets:
 
-- `GCP_WORKLOAD_IDENTITY_PROVIDER`
-- `GCP_SERVICE_ACCOUNT`
+- `GCP_TERRAFORM_SA_KEY`
 - `ARTIFACTORY_USERNAME`
 - `ARTIFACTORY_PASSWORD`
 
