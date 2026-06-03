@@ -11,6 +11,11 @@ from pydantic import BaseModel, Field
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
 MODEL_ID = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+MODEL_IDS = [
+    model.strip()
+    for model in os.getenv("GEMINI_MODELS", MODEL_ID).split(",")
+    if model.strip()
+]
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
 
 app = FastAPI(title="Gemini Cloud Run POC", version="0.1.0")
@@ -18,6 +23,7 @@ app = FastAPI(title="Gemini Cloud Run POC", version="0.1.0")
 
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=8000)
+    model: str | None = None
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     max_output_tokens: int = Field(default=512, ge=1, le=8192)
 
@@ -56,13 +62,30 @@ def _client() -> genai.Client:
     )
 
 
+def _selected_model(requested_model: str | None) -> str:
+    model = requested_model or MODEL_ID
+
+    if model not in MODEL_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported model. Allowed models: {', '.join(MODEL_IDS)}",
+        )
+
+    return model
+
+
 @app.get("/healthz")
-def healthz() -> dict[str, str]:
-    return {"status": "ok", "model": MODEL_ID, "location": LOCATION}
+def healthz() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "model": MODEL_ID,
+        "models": MODEL_IDS,
+        "location": LOCATION,
+    }
 
 
 @app.get("/status", dependencies=[Depends(require_internal_api_key)])
-def status() -> dict[str, str]:
+def status() -> dict[str, Any]:
     return healthz()
 
 
@@ -72,9 +95,11 @@ def status() -> dict[str, str]:
     dependencies=[Depends(require_internal_api_key)],
 )
 def generate(request: GenerateRequest) -> GenerateResponse:
+    model = _selected_model(request.model)
+
     try:
         response: Any = _client().models.generate_content(
-            model=MODEL_ID,
+            model=model,
             contents=request.prompt,
             config=GenerateContentConfig(
                 temperature=request.temperature,
@@ -85,7 +110,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return GenerateResponse(
-        model=MODEL_ID,
+        model=model,
         location=LOCATION,
         text=response.text or "",
     )

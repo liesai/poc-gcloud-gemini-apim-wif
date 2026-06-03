@@ -8,5 +8,6 @@ crash.log
 crash.*.log
 *.tfvars
 !terraform.tfvars.example
+backend.hcl
 tfplan
 *.tfplan
