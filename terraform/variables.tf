@@ -40,6 +40,21 @@ variable "gemini_model" {
   default     = "gemini-2.5-flash-lite"
 }
 
+variable "gemini_models" {
+  description = "Modeles Gemini autorises par l'API."
+  type        = list(string)
+  default = [
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-3.1-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3-pro",
+    "gemini-2.5-pro",
+    "gemini-3.1-pro",
+    "gemini-3-flash",
+  ]
+}
+
 variable "allow_unauthenticated" {
   description = "Expose Cloud Run publiquement. Pratique pour une POC; mettre false pour IAM only."
   type        = bool
@@ -67,6 +82,12 @@ variable "enable_azure_wif" {
 
 variable "azure_tenant_id" {
   description = "Tenant ID Microsoft Entra de la managed identity APIM."
+  type        = string
+  default     = null
+}
+
+variable "azure_oidc_issuer_uri" {
+  description = "Issuer OIDC du token Entra ID envoye a Google STS. Si null, utilise l'issuer v2 login.microsoftonline.com du tenant."
   type        = string
   default     = null
 }

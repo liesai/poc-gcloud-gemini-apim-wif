@@ -16,6 +16,7 @@ locals {
   source_hash      = sha256(join("", [for file in sort(fileset(local.app_dir, "**")) : filesha256("${local.app_dir}/${file}")]))
   image            = "${var.region}-docker.pkg.dev/${local.project_id}/${local.repository_id}/${local.service_name}:${local.source_hash}"
   internal_api_key = var.internal_api_key != null ? var.internal_api_key : random_password.internal_api_key.result
+  azure_issuer_uri = var.azure_oidc_issuer_uri != null ? var.azure_oidc_issuer_uri : "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
 }
 
 resource "google_project" "this" {
@@ -124,7 +125,7 @@ resource "google_iam_workload_identity_pool_provider" "azure_apim" {
   attribute_condition = "assertion.oid == '${var.azure_apim_principal_id}'"
 
   oidc {
-    issuer_uri        = "https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0"
+    issuer_uri        = local.azure_issuer_uri
     allowed_audiences = [var.azure_wif_audience]
   }
 
@@ -210,6 +211,16 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "GEMINI_MODEL"
         value = var.gemini_model
+      }
+
+      env {
+        name  = "GEMINI_MODELS"
+        value = join(",", var.gemini_models)
+      }
+
+      env {
+        name  = "GEMINI_MODELS_JSON"
+        value = jsonencode(var.gemini_models)
       }
 
       dynamic "env" {
