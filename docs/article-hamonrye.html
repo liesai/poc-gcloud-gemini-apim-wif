@@ -1,16 +1,18 @@
 <p>L'objectif de cette POC est de deployer une API Python minimale sur Google Cloud Run, d'appeler Gemini via Vertex AI, puis de l'exposer a travers Azure API Management sans rendre Cloud Run public.</p>
 
-<p>La version finale validee utilise une federation d'identite entre Azure et Google Cloud: APIM utilise sa managed identity, Google STS accepte cette identite via Workload Identity Federation, puis APIM genere un ID token Google pour appeler Cloud Run.</p>
+<p>La version finale validee utilise une federation d'identite entre Azure et Google Cloud: APIM utilise sa managed identity, Google STS accepte cette identite via Workload Identity Federation, puis APIM genere un ID token Google pour appeler Cloud Run. L'API peut aussi exiger un token Entra ID client, par exemple emis pour un service principal autorise a consommer un modele Gemini.</p>
 
 <h2>Architecture</h2>
 
 <pre class="mermaid-source">flowchart LR
-  Client[Client HTTP] --&gt; APIM[Azure API Management&lt;br/&gt;Consumption]
+  Client[Client HTTP&lt;br/&gt;SP Entra ID optionnel] --&gt; APIM[Azure API Management&lt;br/&gt;Consumption]
+  Client --&gt; ClientToken[Entra ID&lt;br/&gt;client_credentials]
+  ClientToken --&gt; APIM
   APIM --&gt; Entra[Microsoft Entra ID&lt;br/&gt;Managed Identity token]
   APIM --&gt; STS[Google STS&lt;br/&gt;Workload Identity Federation]
   APIM --&gt; IAMCreds[Google IAM Credentials&lt;br/&gt;generateIdToken]
   APIM --&gt; Run[Cloud Run prive&lt;br/&gt;FastAPI]
-  Run --&gt; Gemini[Vertex AI&lt;br/&gt;Gemini 2.5 Flash-Lite]
+  Run --&gt; Gemini[Vertex AI&lt;br/&gt;Gemini allowlist]
 
   TerraformGCP[Terraform GCP] --&gt; WIF[Workload Identity Pool&lt;br/&gt;OIDC Azure provider]
   TerraformGCP --&gt; Run
@@ -43,9 +45,9 @@
 <ul>
   <li>un Resource Group;</li>
   <li>une instance Azure API Management en SKU <code>Consumption_0</code>;</li>
-  <li>une managed identity system-assigned sur APIM;</li>
+  <li>une managed identity system-assigned sur APIM, ou une user-assigned managed identity optionnelle pour stabiliser l'identite WIF;</li>
   <li>une API APIM importee depuis une definition OpenAPI minimale;</li>
-  <li>une policy APIM qui orchestre l'authentification vers Google Cloud.</li>
+  <li>une policy APIM qui peut valider un JWT client Entra ID, puis orchestre l'authentification vers Google Cloud.</li>
 </ul>
 
 <h2>Workflow d'authentification</h2>
@@ -53,7 +55,9 @@
 <p>Le chemin d'appel valide est le suivant:</p>
 
 <ol>
-  <li>le client appelle l'URL APIM;</li>
+  <li>le client peut obtenir un token Entra ID avec un service principal et le flow <code>client_credentials</code>;</li>
+  <li>le client appelle l'URL APIM avec <code>Authorization: Bearer &lt;token-client&gt;</code>;</li>
+  <li>si l'authentification client est activee, APIM valide le JWT client, son audience et ses roles ou son App ID;</li>
   <li>APIM recupere un token Microsoft Entra ID avec sa managed identity;</li>
   <li>APIM envoie ce token a Google Security Token Service;</li>
   <li>Google STS valide le token via Workload Identity Federation et retourne un access token Google court;</li>
@@ -63,6 +67,8 @@
 </ol>
 
 <p>Ce flux evite un secret long terme entre APIM et Cloud Run. La frontiere d'acces est geree par IAM et par des tokens courts.</p>
+
+<p>Pour l'authentification client, le mode recommande est d'exposer un app role sur l'App Registration representant l'API APIM, par exemple <code>Gemini.Invoke</code>, puis d'assigner ce role aux service principals clients autorises. APIM valide alors le claim <code>roles</code>. Une variante plus simple consiste a autoriser directement des App IDs clients via le claim <code>azp</code>, mais elle est moins expressive qu'un role applicatif.</p>
 
 <h2>API exposee</h2>
 
@@ -77,8 +83,22 @@ POST /generate</code></pre>
 <p>Payload de generation:</p>
 
 <pre class="code-block"><code class="language-json">{
-  "prompt": "Reponds en francais en une phrase: que valide cette POC ?"
+  "prompt": "Reponds en francais en une phrase: que valide cette POC ?",
+  "model": "gemini-2.5-flash-lite"
 }</code></pre>
+
+<p>Le champ <code>model</code> est optionnel pour compatibilite. S'il est absent, l'application utilise <code>GEMINI_MODEL</code>. S'il est present, il doit appartenir a l'allowlist <code>GEMINI_MODELS</code>.</p>
+
+<p>Modeles declares dans cette version:</p>
+
+<pre class="code-block"><code class="language-text">gemini-3.5-flash
+gemini-2.5-flash
+gemini-3.1-flash
+gemini-2.5-flash-lite
+gemini-3-pro
+gemini-2.5-pro
+gemini-3.1-pro
+gemini-3-flash</code></pre>
 
 <h2>Validation</h2>
 
@@ -97,7 +117,7 @@ https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/generate</code></pre>
 
 curl -sS -o /tmp/direct -w '%{http_code}\n' \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"direct"}' \
+  -d '{"prompt":"direct","model":"gemini-2.5-flash-lite"}' \
   "$URL/generate"</code></pre>
 
 <p>Le resultat attendu est <code>403</code>.</p>
@@ -109,12 +129,24 @@ curl -sS -o /tmp/direct -w '%{http_code}\n' \
 <pre class="code-block"><code class="language-json">{
   "status": "ok",
   "model": "gemini-2.5-flash-lite",
+  "models": [
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-3.1-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3-pro",
+    "gemini-2.5-pro",
+    "gemini-3.1-pro",
+    "gemini-3-flash"
+  ],
   "location": "global"
 }</code></pre>
 
 <p>Pour tester la generation:</p>
 
-<pre class="code-block"><code class="language-bash">./scripts/call_apim.sh "Reponds en francais en une phrase: valide le chemin APIM Managed Identity vers Cloud Run."</code></pre>
+<pre class="code-block"><code class="language-bash">./scripts/call_apim.sh \
+  "Reponds en francais en une phrase: valide le chemin APIM Managed Identity vers Cloud Run." \
+  "gemini-2.5-flash-lite"</code></pre>
 
 <p>Equivalent manuel:</p>
 
@@ -122,10 +154,16 @@ curl -sS -o /tmp/direct -w '%{http_code}\n' \
 
 curl -sS \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF."}' \
+  -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF.","model":"gemini-2.5-flash-lite"}' \
   "$APIM_URL" | jq .</code></pre>
 
 <p><code>POST /gemini/generate</code> via APIM retourne <code>200 OK</code> avec un JSON contenant <code>model</code>, <code>location</code> et <code>text</code>.</p>
+
+<p>La selection dynamique d'un autre modele autorise se teste de la meme maniere:</p>
+
+<pre class="code-block"><code class="language-bash">./scripts/call_apim.sh \
+  "Reponds en francais en une phrase: valide le choix dynamique du modele." \
+  "gemini-2.5-flash"</code></pre>
 
 <h2>Workflow de deploiement</h2>
 
@@ -142,12 +180,53 @@ terraform -chdir=terraform-azure-apim apply \
 
 <p>En pratique, l'identite managée APIM est connue apres creation d'APIM. On la reporte ensuite cote GCP pour creer le provider WIF et fermer Cloud Run au public.</p>
 
+<p>Pour eviter de devoir changer l'object ID cote GCP a chaque recreation d'APIM, le module Azure peut creer une user-assigned managed identity stable:</p>
+
+<pre class="code-block"><code class="language-hcl">create_user_assigned_identity = true</code></pre>
+
+<p>Dans ce mode, la sortie <code>apim_principal_id</code> correspond a l'object ID de cette identite stable; c'est cette valeur qu'il faut reporter cote GCP dans <code>azure_apim_principal_id</code>.</p>
+
+<h2>Authentifier les clients APIM avec un service principal</h2>
+
+<p>Le controle client peut etre fait directement dans APIM avec <code>validate-jwt</code>. Le client obtient un token Entra ID en <code>client_credentials</code>, puis appelle APIM avec ce token. APIM valide le token avant d'executer la federation vers Google Cloud.</p>
+
+<p>Configuration Terraform recommandee:</p>
+
+<pre class="code-block"><code class="language-hcl">enable_client_sp_auth     = true
+client_auth_tenant_id     = "&lt;tenant-id&gt;"
+client_auth_audience      = "api://&lt;app-registration-api-id&gt;"
+client_auth_allowed_roles = ["Gemini.Invoke"]</code></pre>
+
+<p>Exemple d'appel client:</p>
+
+<pre class="code-block"><code class="language-bash">TOKEN="$(curl -sS -X POST "https://login.microsoftonline.com/&lt;tenant-id&gt;/oauth2/v2.0/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=&lt;client-app-id&gt;" \
+  -d "client_secret=&lt;client-secret&gt;" \
+  -d "grant_type=client_credentials" \
+  -d "scope=api://&lt;app-registration-api-id&gt;/.default" | jq -r .access_token)"
+
+curl -sS \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Reponds en une phrase.","model":"gemini-2.5-flash-lite"}' \
+  "https://&lt;apim-name&gt;.azure-api.net/gemini/generate" | jq .</code></pre>
+
+<p>Ce controle est independant de l'authentification APIM vers Cloud Run. Le token client n'est pas transmis a Cloud Run; APIM le remplace par un ID token Google genere pour le service account autorise.</p>
+
+<h2>Variante Cloud Run seul avec Artifactory</h2>
+
+<p>Le depot contient aussi un module <code>terraform-cloud-run-only/</code> pour un socle GCP deja livre. Ce module ne cree ni projet, ni interconnect, ni load balancer. Le workflow GitHub Actions construit l'image Docker, la pousse dans Artifactory, puis Cloud Run lit l'image via un repository Artifact Registry remote.</p>
+
+<p>Le pipeline manuel <code>.github/workflows/deploy-cloud-run.yml</code> utilise une cle JSON de service account Terraform stockee dans le secret GitHub <code>GCP_TERRAFORM_SA_KEY</code>, puis applique Terraform avec un backend GCS.</p>
+
 <h2>Disponibiliser a plusieurs clients</h2>
 
 <p>Pour exposer l'API a plusieurs clients, APIM doit devenir le point de gestion des consommateurs:</p>
 
 <ul>
   <li>creer un produit APIM par usage: sandbox, partenaire, interne ou production;</li>
+  <li>exiger un token Entra ID client avec un role applicatif comme <code>Gemini.Invoke</code> lorsque l'appelant est une application machine-to-machine;</li>
   <li>activer <code>subscription_required=true</code> pour identifier chaque client;</li>
   <li>creer une subscription par client ou par application cliente;</li>
   <li>appliquer des quotas et du rate limiting par produit ou par subscription;</li>
@@ -168,6 +247,8 @@ terraform -chdir=terraform-azure-apim apply \
   <li>service account Google dedie pour APIM avec uniquement <code>roles/run.invoker</code>;</li>
   <li>service account applicatif distinct pour Vertex AI;</li>
   <li>tokens courts generes a la demande;</li>
+  <li>authentification client optionnelle par service principal Entra ID;</li>
+  <li>user-assigned managed identity possible pour stabiliser l'identite APIM dans Google WIF;</li>
   <li>states Terraform separes pour GCP et Azure;</li>
   <li><code>min_instance_count=0</code> pour limiter les couts idle.</li>
 </ul>
