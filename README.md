@@ -144,6 +144,47 @@ cloud_run_url    = "https://poc-gemini-api-xxxxx-uc.a.run.app"
 backend_auth_mode = "wif"
 ```
 
+Pour stabiliser l'identite APIM utilisee dans Google WIF, il est possible
+d'utiliser une user-assigned managed identity:
+
+```hcl
+create_user_assigned_identity = true
+```
+
+Dans ce mode, la sortie `apim_principal_id` correspond a l'object ID stable de
+la user-assigned identity. C'est cette valeur qu'il faut reporter cote GCP dans
+`azure_apim_principal_id`.
+
+Pour exiger une authentification client sur APIM avec un service principal
+Entra ID, activer la validation JWT inbound:
+
+```hcl
+enable_client_sp_auth     = true
+client_auth_tenant_id     = "<tenant-id>"
+client_auth_audience      = "api://<app-registration-api-id>"
+client_auth_allowed_roles = ["Gemini.Invoke"]
+```
+
+Le client obtient alors un token Entra ID avec le flow `client_credentials`,
+puis appelle APIM avec `Authorization: Bearer <token>`.
+
+Exemple client:
+
+```bash
+TOKEN="$(curl -sS -X POST "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=<client-app-id>" \
+  -d "client_secret=<client-secret>" \
+  -d "grant_type=client_credentials" \
+  -d "scope=api://<app-registration-api-id>/.default" | jq -r .access_token)"
+
+curl -sS \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Reponds en une phrase.","model":"gemini-2.5-flash-lite"}' \
+  "https://<apim-name>.azure-api.net/gemini/generate" | jq .
+```
+
 Apres creation de la managed identity APIM, recuperer les outputs:
 
 ```bash

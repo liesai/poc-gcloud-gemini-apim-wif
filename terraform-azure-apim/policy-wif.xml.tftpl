@@ -1,8 +1,9 @@
 <policies>
   <inbound>
     <base />
+${client_auth_policy}
     <set-backend-service base-url="${cloud_run_url}" />
-    <authentication-managed-identity resource="${entra_wif_resource}" output-token-variable-name="azureToken" />
+    <authentication-managed-identity resource="${entra_wif_resource}"%{ if apim_wif_managed_identity_client_id != null } client-id="${apim_wif_managed_identity_client_id}"%{ endif } output-token-variable-name="azureToken" />
     <send-request mode="new" response-variable-name="stsResponse" timeout="20" ignore-error="false">
       <set-url>https://sts.googleapis.com/v1/token</set-url>
       <set-method>POST</set-method>

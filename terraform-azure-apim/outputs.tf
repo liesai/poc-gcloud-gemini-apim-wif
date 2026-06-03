@@ -9,13 +9,28 @@ output "resource_group_name" {
 }
 
 output "apim_principal_id" {
-  description = "Object ID de la managed identity system-assigned APIM."
-  value       = azurerm_api_management.this.identity[0].principal_id
+  description = "Object ID de l'identite APIM a autoriser cote Google WIF."
+  value       = local.apim_invoker_principal_id
 }
 
 output "apim_tenant_id" {
-  description = "Tenant ID de la managed identity system-assigned APIM."
-  value       = azurerm_api_management.this.identity[0].tenant_id
+  description = "Tenant ID de l'identite APIM a autoriser cote Google WIF."
+  value       = local.apim_invoker_tenant_id
+}
+
+output "apim_system_assigned_principal_id" {
+  description = "Object ID de la system-assigned managed identity APIM."
+  value       = azurerm_api_management.this.identity[0].principal_id
+}
+
+output "apim_user_assigned_client_id" {
+  description = "Client ID de la user-assigned managed identity APIM, si creee."
+  value       = var.create_user_assigned_identity ? azurerm_user_assigned_identity.apim[0].client_id : null
+}
+
+output "apim_user_assigned_principal_id" {
+  description = "Object ID de la user-assigned managed identity APIM, si creee."
+  value       = var.create_user_assigned_identity ? azurerm_user_assigned_identity.apim[0].principal_id : null
 }
 
 output "gateway_url" {

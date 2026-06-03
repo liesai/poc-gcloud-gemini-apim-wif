@@ -7,6 +7,21 @@ cloud_run_url = "https://poc-gemini-api-xxxxx-uc.a.run.app"
 # Mode recommande: APIM managed identity + Google WIF.
 backend_auth_mode = "wif"
 
+# Optionnel: user-assigned managed identity stable pour APIM -> Google WIF.
+# Si true, reporter la sortie apim_principal_id cote GCP dans azure_apim_principal_id.
+# create_user_assigned_identity = true
+
+# Optionnel: authentification client -> APIM par service principal Entra ID.
+# Recommande: exposer un app role sur l'App Registration API, puis autoriser ce role.
+# enable_client_sp_auth     = true
+# client_auth_tenant_id     = "00000000-0000-0000-0000-000000000000"
+# client_auth_audience      = "api://00000000-0000-0000-0000-000000000000"
+# client_auth_allowed_roles = ["Gemini.Invoke"]
+
+# Variante moins stricte: autoriser directement des App IDs clients.
+# client_auth_allowed_app_ids = ["00000000-0000-0000-0000-000000000000"]
+# client_auth_app_id_claim    = "azp"
+
 # Mode de repli: secret partage.
 # backend_auth_mode = "shared_secret"
 # backend_api_key   = "secret-partage-a-ne-pas-commiter"

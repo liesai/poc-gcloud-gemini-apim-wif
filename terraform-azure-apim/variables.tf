@@ -22,6 +22,12 @@ variable "apim_name" {
   default     = null
 }
 
+variable "create_user_assigned_identity" {
+  description = "Cree et attache une user-assigned managed identity a APIM pour stabiliser l'identite utilisee vers Google WIF."
+  type        = bool
+  default     = false
+}
+
 variable "publisher_name" {
   description = "Nom publie dans l'instance APIM."
   type        = string
@@ -84,6 +90,48 @@ variable "subscription_required" {
   description = "Exige une subscription key APIM pour appeler l'API."
   type        = bool
   default     = false
+}
+
+variable "enable_client_sp_auth" {
+  description = "Exige un token Entra ID client valide avant d'appeler le backend Cloud Run."
+  type        = bool
+  default     = false
+}
+
+variable "client_auth_tenant_id" {
+  description = "Tenant ID Entra ID qui emet les tokens des service principals clients."
+  type        = string
+  default     = null
+}
+
+variable "client_auth_audience" {
+  description = "Audience attendue dans le token client, par exemple api://<app-id-api-apim>."
+  type        = string
+  default     = null
+}
+
+variable "client_auth_allowed_roles" {
+  description = "Roles applicatifs Entra ID autorises a appeler l'API APIM."
+  type        = list(string)
+  default     = []
+}
+
+variable "client_auth_roles_claim" {
+  description = "Nom du claim portant les roles applicatifs dans le token client."
+  type        = string
+  default     = "roles"
+}
+
+variable "client_auth_allowed_app_ids" {
+  description = "App IDs de service principals clients autorises. Preferer les roles applicatifs quand possible."
+  type        = list(string)
+  default     = []
+}
+
+variable "client_auth_app_id_claim" {
+  description = "Nom du claim portant l'App ID client dans le token client. Utiliser azp pour les tokens v2, appid pour certains tokens v1."
+  type        = string
+  default     = "azp"
 }
 
 variable "rate_limit_calls" {

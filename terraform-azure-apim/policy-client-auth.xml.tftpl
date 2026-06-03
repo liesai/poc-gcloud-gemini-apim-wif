@@ -1,0 +1,26 @@
+%{ if enable_client_sp_auth ~}
+    <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized client." require-expiration-time="true" require-scheme="Bearer">
+      <openid-config url="https://login.microsoftonline.com/${client_auth_tenant_id}/v2.0/.well-known/openid-configuration" />
+      <audiences>
+        <audience>${client_auth_audience}</audience>
+      </audiences>
+%{ if length(client_auth_allowed_roles) > 0 || length(client_auth_allowed_app_ids) > 0 ~}
+      <required-claims>
+%{ if length(client_auth_allowed_roles) > 0 ~}
+        <claim name="${client_auth_roles_claim}" match="any">
+%{ for role in client_auth_allowed_roles ~}
+          <value>${role}</value>
+%{ endfor ~}
+        </claim>
+%{ endif ~}
+%{ if length(client_auth_allowed_app_ids) > 0 ~}
+        <claim name="${client_auth_app_id_claim}" match="any">
+%{ for app_id in client_auth_allowed_app_ids ~}
+          <value>${app_id}</value>
+%{ endfor ~}
+        </claim>
+%{ endif ~}
+      </required-claims>
+%{ endif ~}
+    </validate-jwt>
+%{ endif ~}
