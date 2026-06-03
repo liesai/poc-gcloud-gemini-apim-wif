@@ -300,7 +300,7 @@ URL="$(terraform -chdir=terraform output -raw service_url)"
 
 curl -sS -o /tmp/direct -w '%{http_code}\n' \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"direct"}' \
+  -d '{"prompt":"direct","model":"gemini-2.5-flash-lite"}' \
   "$URL/generate"
 ```
 
@@ -325,7 +325,9 @@ Resultat attendu:
 Tester la generation via APIM avec le script:
 
 ```bash
-./scripts/call_apim.sh "Reponds en francais en une phrase: valide le chemin APIM Managed Identity vers Cloud Run."
+./scripts/call_apim.sh \
+  "Reponds en francais en une phrase: valide le chemin APIM Managed Identity vers Cloud Run." \
+  "gemini-2.5-flash-lite"
 ```
 
 Equivalent manuel:
@@ -335,11 +337,19 @@ APIM_URL="$(terraform -chdir=terraform-azure-apim output -raw gemini_generate_ur
 
 curl -sS \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF."}' \
+  -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF.","model":"gemini-2.5-flash-lite"}' \
   "$APIM_URL" | jq .
 ```
 
 Resultat attendu: `200 OK` avec un JSON contenant `model`, `location` et `text`.
+
+Tester explicitement la selection dynamique avec un autre modele autorise:
+
+```bash
+./scripts/call_apim.sh \
+  "Reponds en francais en une phrase: valide le choix dynamique du modele." \
+  "gemini-2.5-flash"
+```
 
 ## Alternative: secret partage
 
