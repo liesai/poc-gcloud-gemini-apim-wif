@@ -14,23 +14,13 @@ output "service_url" {
 }
 
 output "image" {
-  description = "Image deployee par Cloud Run via Artifact Registry remote."
-  value       = local.cloud_run_image
-}
-
-output "artifactory_image" {
-  description = "Image construite et poussee dans Artifactory."
+  description = "Image Artifactory deployee par Cloud Run."
   value       = local.artifactory_image
 }
 
-output "cloud_run_image" {
-  description = "Image lue par Cloud Run via Artifact Registry remote."
-  value       = local.cloud_run_image
-}
-
-output "artifact_remote_repository" {
-  description = "Repository Artifact Registry remote utilise."
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_remote_repository_id}"
+output "artifactory_image" {
+  description = "Image construite, poussee dans Artifactory et lue directement par Cloud Run."
+  value       = local.artifactory_image
 }
 
 output "cloud_run_service_account" {

@@ -1,8 +1,8 @@
 # Deploiement Cloud Run uniquement avec Artifactory
 
-Ce repertoire ajoute un deploiement GCP limite a Cloud Run et Artifact Registry remote. Il ne cree pas le projet, n'active pas les APIs, ne configure pas l'interconnect et ne configure pas de load balancer.
+Ce repertoire ajoute un deploiement GCP limite a Cloud Run avec une image Artifactory referencee directement. Il ne cree pas le projet, n'active pas les APIs, ne cree pas d'Artifact Registry, ne configure pas l'interconnect et ne configure pas de load balancer.
 
-Le pipeline GitHub Actions construit l'application `../app` avec Docker, pousse l'image dans Artifactory, puis Terraform deploie un service Cloud Run qui lit cette image via un repository Artifact Registry remote pointant vers Artifactory.
+Le pipeline GitHub Actions construit l'application `../app` avec Docker, pousse l'image dans Artifactory, puis Terraform deploie un service Cloud Run qui reference directement l'image Artifactory.
 
 ## Modeles declares
 
@@ -36,7 +36,7 @@ bucket = "mon-bucket-tfstate"
 prefix = "poc-gcloud-gemini/cloud-run"
 ```
 
-Si le repository Artifact Registry remote ou les roles IAM Vertex AI sont deja livres par le socle, garder les variables `create_artifact_remote_repository` et `grant_vertex_user_role` a `false` selon le cas.
+Si les roles IAM Vertex AI sont deja livres par le socle, garder `grant_vertex_user_role` a `false`.
 
 ## Pipeline GitHub Actions
 
@@ -55,6 +55,5 @@ Variables:
 - `GCP_REGION`
 - `VERTEX_LOCATION`
 - `ARTIFACTORY_REGISTRY_URL`
-- `ARTIFACT_REMOTE_REPOSITORY_ID`
 - `TF_STATE_BUCKET`
 - `TF_STATE_PREFIX`

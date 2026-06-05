@@ -4,7 +4,7 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "Region Cloud Run et Artifact Registry."
+  description = "Region Cloud Run."
   type        = string
   default     = "us-central1"
 }
@@ -54,30 +54,6 @@ variable "image_name" {
   description = "Nom de l'image Docker dans Artifactory."
   type        = string
   default     = "gemini-api"
-}
-
-variable "artifact_remote_repository_id" {
-  description = "Repository Artifact Registry remote utilise par Cloud Run pour lire Artifactory."
-  type        = string
-}
-
-variable "create_artifact_remote_repository" {
-  description = "Cree le repository Artifact Registry remote pointant vers Artifactory."
-  type        = bool
-  default     = false
-}
-
-variable "artifactory_username" {
-  description = "Utilisateur Artifactory pour le repository remote Artifact Registry. Optionnel."
-  type        = string
-  default     = null
-}
-
-variable "artifactory_password_secret_version" {
-  description = "Secret Manager version contenant le mot de passe Artifactory, par exemple projects/<project>/secrets/<secret>/versions/latest. Optionnel."
-  type        = string
-  default     = null
-  sensitive   = true
 }
 
 variable "image_tag" {
