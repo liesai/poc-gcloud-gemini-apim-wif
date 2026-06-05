@@ -1,25 +1,9 @@
 locals {
-  service_name        = var.service_name != null ? var.service_name : "${var.name_prefix}-api"
-  service_account_id  = "${var.name_prefix}-run"
-  artifactory_image   = "${var.artifactory_registry_url}/${var.image_name}:${var.image_tag}"
-  run_service_account = var.service_account_email != null ? var.service_account_email : try(google_service_account.run[0].email, null)
-  effective_invokers  = var.allow_unauthenticated ? setunion(var.invoker_members, ["allUsers"]) : var.invoker_members
-  gemini_models_csv   = join(",", var.gemini_models)
-  gemini_models_json  = jsonencode(var.gemini_models)
-}
-
-resource "google_service_account" "run" {
-  count        = var.create_service_account && var.service_account_email == null ? 1 : 0
-  project      = var.project_id
-  account_id   = local.service_account_id
-  display_name = "Cloud Run Gemini"
-}
-
-resource "google_project_iam_member" "run_vertex_user" {
-  count   = var.grant_vertex_user_role && local.run_service_account != null ? 1 : 0
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${local.run_service_account}"
+  service_name       = var.service_name != null ? var.service_name : "${var.name_prefix}-api"
+  artifactory_image  = "${var.artifactory_registry_url}/${var.image_name}:${var.image_tag}"
+  effective_invokers = var.allow_unauthenticated ? setunion(var.invoker_members, ["allUsers"]) : var.invoker_members
+  gemini_models_csv  = join(",", var.gemini_models)
+  gemini_models_json = jsonencode(var.gemini_models)
 }
 
 resource "google_cloud_run_v2_service" "api" {
@@ -31,7 +15,7 @@ resource "google_cloud_run_v2_service" "api" {
   labels               = var.labels
 
   template {
-    service_account = local.run_service_account
+    service_account = var.service_account_email
 
     containers {
       image = local.artifactory_image
@@ -104,14 +88,10 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
 
-  depends_on = [
-    google_project_iam_member.run_vertex_user,
-  ]
-
   lifecycle {
     precondition {
-      condition     = local.run_service_account != null
-      error_message = "service_account_email est requis quand create_service_account=false."
+      condition     = var.service_account_email != null && var.service_account_email != ""
+      error_message = "service_account_email est requis: le service account Cloud Run doit deja exister avec les roles necessaires."
     }
   }
 }

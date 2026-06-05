@@ -28,21 +28,8 @@ variable "service_name" {
 }
 
 variable "service_account_email" {
-  description = "Service account existant a utiliser par Cloud Run. Si null et create_service_account=true, Terraform cree un service account."
+  description = "Service account existant a associer a Cloud Run. Il doit deja avoir les roles necessaires, notamment Vertex AI si l'application appelle Gemini."
   type        = string
-  default     = null
-}
-
-variable "create_service_account" {
-  description = "Cree un service account dedie a Cloud Run."
-  type        = bool
-  default     = true
-}
-
-variable "grant_vertex_user_role" {
-  description = "Attribue roles/aiplatform.user au service account Cloud Run."
-  type        = bool
-  default     = true
 }
 
 variable "artifactory_registry_url" {

@@ -219,7 +219,7 @@ Le flux cible est:
 1. GitHub Actions construit l'image Docker depuis `app/`;
 2. l'image est poussee dans Artifactory;
 3. Cloud Run reference directement cette image Artifactory;
-4. Terraform applique uniquement le service Cloud Run, son service account optionnel, les invokers IAM optionnels et les variables Gemini.
+4. Terraform applique uniquement le service Cloud Run, associe le service account existant, configure les invokers IAM optionnels et les variables Gemini.
 
 Modeles Gemini disponibilises:
 
@@ -261,8 +261,7 @@ artifactory_registry_url      = "artifactory.example.com/docker-local"
 image_name                    = "gemini-api"
 image_tag                     = "a-remplacer-par-le-sha"
 
-create_service_account = true
-grant_vertex_user_role = true
+service_account_email = "sa-cloud-run@mon-projet-gcp.iam.gserviceaccount.com"
 
 allow_unauthenticated = false
 invoker_members = [
@@ -310,6 +309,7 @@ GCP_PROJECT_ID
 GCP_REGION
 VERTEX_LOCATION
 ARTIFACTORY_REGISTRY_URL
+CLOUD_RUN_SERVICE_ACCOUNT_EMAIL
 TF_STATE_BUCKET
 TF_STATE_PREFIX
 ```

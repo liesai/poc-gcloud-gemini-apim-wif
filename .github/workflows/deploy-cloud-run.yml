@@ -33,6 +33,7 @@ jobs:
       REGION: ${{ vars.GCP_REGION }}
       VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION }}
       ARTIFACTORY_REGISTRY_URL: ${{ vars.ARTIFACTORY_REGISTRY_URL }}
+      CLOUD_RUN_SERVICE_ACCOUNT_EMAIL: ${{ vars.CLOUD_RUN_SERVICE_ACCOUNT_EMAIL }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       TF_STATE_PREFIX: ${{ vars.TF_STATE_PREFIX }}
       IMAGE_NAME: gemini-api
@@ -118,6 +119,7 @@ jobs:
             -var="region=${REGION}" \
             -var="vertex_location=${VERTEX_LOCATION}" \
             -var="service_name=${{ inputs.service_name }}" \
+            -var="service_account_email=${CLOUD_RUN_SERVICE_ACCOUNT_EMAIL}" \
             -var="artifactory_registry_url=${{ steps.artifactory.outputs.image_prefix }}" \
             -var="image_name=${IMAGE_NAME}" \
             -var="image_tag=${{ steps.image.outputs.tag }}" \

@@ -36,7 +36,7 @@ bucket = "mon-bucket-tfstate"
 prefix = "poc-gcloud-gemini/cloud-run"
 ```
 
-Si les roles IAM Vertex AI sont deja livres par le socle, garder `grant_vertex_user_role` a `false`.
+Le service account Cloud Run doit deja etre livre par le socle avec les roles necessaires. Terraform se contente de l'associer au service Cloud Run via `service_account_email`.
 
 ## Pipeline GitHub Actions
 
@@ -55,5 +55,6 @@ Variables:
 - `GCP_REGION`
 - `VERTEX_LOCATION`
 - `ARTIFACTORY_REGISTRY_URL`
+- `CLOUD_RUN_SERVICE_ACCOUNT_EMAIL`
 - `TF_STATE_BUCKET`
 - `TF_STATE_PREFIX`

@@ -14,15 +14,9 @@ artifactory_registry_url = "artifactory.example.com/docker-local"
 image_name               = "gemini-api"
 image_tag                = "a-remplacer-par-le-sha"
 
-# Service account Cloud Run.
-# Option 1: Terraform cree le service account et lui donne acces Vertex AI.
-create_service_account = true
-grant_vertex_user_role = true
-
-# Option 2: utiliser un service account deja livre.
-# create_service_account = false
-# service_account_email  = "sa-cloud-run@mon-projet-gcp.iam.gserviceaccount.com"
-# grant_vertex_user_role = false
+# Service account Cloud Run deja livre par le socle.
+# Terraform se contente de l'associer au service Cloud Run.
+service_account_email = "sa-cloud-run@mon-projet-gcp.iam.gserviceaccount.com"
 
 # Modeles Gemini disponibilises.
 gemini_default_model = "gemini-2.5-flash-lite"

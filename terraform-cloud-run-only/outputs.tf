@@ -25,7 +25,7 @@ output "artifactory_image" {
 
 output "cloud_run_service_account" {
   description = "Service account utilise par Cloud Run."
-  value       = local.run_service_account
+  value       = var.service_account_email
 }
 
 output "gemini_default_model" {
