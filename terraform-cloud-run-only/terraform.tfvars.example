@@ -9,14 +9,18 @@ vertex_location = "global"
 name_prefix  = "gemini"
 service_name = "gemini-api"
 
-# Image construite dans Artifactory et referencee directement par Cloud Run.
-artifactory_registry_url = "artifactory.example.com/docker-local"
-image_name               = "gemini-api"
-image_tag                = "a-remplacer-par-le-sha"
+# Image construite dans Artifactory, puis lue par Cloud Run via un repository
+# Artifact Registry remote.
+artifactory_registry_url          = "artifactory.example.com/docker-local"
+image_name                        = "gemini-api"
+image_tag                         = "a-remplacer-par-le-sha"
+artifact_remote_repository_id     = "artifactory-remote"
+create_artifact_remote_repository = false
 
-# Service account Cloud Run deja livre par le socle.
-# Terraform se contente de l'associer au service Cloud Run.
-service_account_email = "sa-cloud-run@mon-projet-gcp.iam.gserviceaccount.com"
+# Si le remote repository doit s'authentifier sur Artifactory, renseigner les
+# deux valeurs ensemble. Le secret doit deja exister dans Secret Manager.
+# artifactory_username                = "svc-artifactory"
+# artifactory_password_secret_version = "projects/mon-projet-gcp/secrets/artifactory-password/versions/latest"
 
 # Modeles Gemini disponibilises.
 gemini_default_model = "gemini-2.5-flash-lite"

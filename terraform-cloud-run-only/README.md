@@ -1,8 +1,8 @@
 # Deploiement Cloud Run uniquement avec Artifactory
 
-Ce repertoire ajoute un deploiement GCP limite a Cloud Run avec une image Artifactory referencee directement. Il ne cree pas le projet, n'active pas les APIs, ne cree pas d'Artifact Registry, ne configure pas l'interconnect et ne configure pas de load balancer.
+Ce repertoire ajoute un deploiement GCP limite a Cloud Run avec une image lue via Artifact Registry remote vers Artifactory. Il ne cree pas le projet, n'active pas les APIs, ne configure pas l'interconnect et ne configure pas de load balancer.
 
-Le pipeline GitHub Actions construit l'application `../app` avec Docker, pousse l'image dans Artifactory, puis Terraform deploie un service Cloud Run qui reference directement l'image Artifactory.
+Le pipeline GitHub Actions construit l'application `../app` avec Docker, pousse l'image dans Artifactory, puis Terraform deploie un service Cloud Run qui lit cette image via un repository Artifact Registry remote pointant vers Artifactory.
 
 ## Modeles declares
 
@@ -36,7 +36,9 @@ bucket = "mon-bucket-tfstate"
 prefix = "poc-gcloud-gemini/cloud-run"
 ```
 
-Le service account Cloud Run doit deja etre livre par le socle avec les roles necessaires. Terraform se contente de l'associer au service Cloud Run via `service_account_email`.
+Le service account Cloud Run doit deja etre gere par le socle. Ce module ne cree pas de service account et ne modifie pas son association; il se concentre sur le service Cloud Run et l'image Artifact Registry.
+
+Si le repository Artifact Registry remote est deja livre par le socle, garder `create_artifact_remote_repository = false`. Sinon, le module peut le creer avec `create_artifact_remote_repository = true`.
 
 ## Pipeline GitHub Actions
 
@@ -55,6 +57,6 @@ Variables:
 - `GCP_REGION`
 - `VERTEX_LOCATION`
 - `ARTIFACTORY_REGISTRY_URL`
-- `CLOUD_RUN_SERVICE_ACCOUNT_EMAIL`
+- `ARTIFACT_REMOTE_REPOSITORY_ID`
 - `TF_STATE_BUCKET`
 - `TF_STATE_PREFIX`
