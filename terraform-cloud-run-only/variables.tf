@@ -45,7 +45,7 @@ variable "create_artifact_registry_repository" {
 }
 
 variable "image_tag" {
-  description = "Tag Docker existant a deployer depuis Artifact Registry."
+  description = "Tag Docker a construire, pousser dans Artifact Registry, puis deployer."
   type        = string
 }
 

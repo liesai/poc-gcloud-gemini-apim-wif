@@ -282,7 +282,7 @@ terraform -chdir=terraform-cloud-run-only apply
 
 Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 
-- authentification GCP via Workload Identity Federation;
+- authentification GCP via la cle JSON du service account Terraform;
 - creation optionnelle du repository Artifact Registry;
 - build et push de l'image dans Artifact Registry;
 - `terraform init`, `validate`, puis `apply` sur `terraform-cloud-run-only/`.
@@ -290,8 +290,7 @@ Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 Secrets GitHub requis:
 
 ```text
-GCP_WORKLOAD_IDENTITY_PROVIDER
-GCP_SERVICE_ACCOUNT
+GCP_TERRAFORM_SA_KEY
 ```
 
 Variables GitHub requises:
@@ -301,10 +300,17 @@ GCP_PROJECT_ID
 GCP_REGION
 VERTEX_LOCATION
 ARTIFACT_REGISTRY_REPOSITORY_ID
-CREATE_ARTIFACT_REGISTRY_REPOSITORY
 TF_STATE_BUCKET
 TF_STATE_PREFIX
 ```
+
+Variable GitHub optionnelle:
+
+```text
+CREATE_ARTIFACT_REGISTRY_REPOSITORY
+```
+
+Si elle est absente, le workflow utilise `false`.
 
 Le workflow se lance manuellement depuis GitHub Actions. Par defaut, le tag image est le SHA du commit; il peut etre surcharge par l'input `image_tag`.
 
