@@ -33,6 +33,7 @@ jobs:
       REGION: ${{ vars.GCP_REGION }}
       VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION }}
       ARTIFACT_REGISTRY_REPOSITORY_ID: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY_ID }}
+      CREATE_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.CREATE_ARTIFACT_REGISTRY_REPOSITORY }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       TF_STATE_PREFIX: ${{ vars.TF_STATE_PREFIX }}
       IMAGE_NAME: gemini-api
@@ -82,6 +83,39 @@ jobs:
         working-directory: terraform-cloud-run-only
         run: terraform validate
 
+      - name: Ensure Artifact Registry repository
+        working-directory: terraform-cloud-run-only
+        run: |
+          terraform apply -auto-approve \
+            -target=google_artifact_registry_repository.app \
+            -var="project_id=${PROJECT_ID}" \
+            -var="region=${REGION}" \
+            -var="vertex_location=${VERTEX_LOCATION}" \
+            -var="service_name=${{ inputs.service_name }}" \
+            -var="image_name=${IMAGE_NAME}" \
+            -var="image_tag=${{ steps.image.outputs.tag }}" \
+            -var="artifact_registry_repository_id=${ARTIFACT_REGISTRY_REPOSITORY_ID}" \
+            -var="create_artifact_registry_repository=${CREATE_ARTIFACT_REGISTRY_REPOSITORY:-false}" \
+            -var="gemini_default_model=${GEMINI_DEFAULT_MODEL}" \
+            -var="gemini_models=[\"gemini-3.5-flash\",\"gemini-2.5-flash\",\"gemini-3.1-flash\",\"gemini-2.5-flash-lite\",\"gemini-3-pro\",\"gemini-2.5-pro\",\"gemini-3.1-pro\",\"gemini-3-flash\"]"
+
+      - name: Configure Docker for Artifact Registry
+        shell: bash
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        shell: bash
+        run: |
+          docker build \
+            -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPOSITORY_ID}/${IMAGE_NAME}:${{ steps.image.outputs.tag }}" \
+            ./app
+
+      - name: Push image
+        shell: bash
+        run: |
+          docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPOSITORY_ID}/${IMAGE_NAME}:${{ steps.image.outputs.tag }}"
+
       - name: Terraform apply
         working-directory: terraform-cloud-run-only
         run: |
@@ -93,5 +127,6 @@ jobs:
             -var="image_name=${IMAGE_NAME}" \
             -var="image_tag=${{ steps.image.outputs.tag }}" \
             -var="artifact_registry_repository_id=${ARTIFACT_REGISTRY_REPOSITORY_ID}" \
+            -var="create_artifact_registry_repository=${CREATE_ARTIFACT_REGISTRY_REPOSITORY:-false}" \
             -var="gemini_default_model=${GEMINI_DEFAULT_MODEL}" \
             -var="gemini_models=[\"gemini-3.5-flash\",\"gemini-2.5-flash\",\"gemini-3.1-flash\",\"gemini-2.5-flash-lite\",\"gemini-3-pro\",\"gemini-2.5-pro\",\"gemini-3.1-pro\",\"gemini-3-flash\"]"

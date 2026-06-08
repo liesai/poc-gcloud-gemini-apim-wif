@@ -216,7 +216,7 @@ curl -sS \
 
 <h2>Variante Cloud Run seul avec Artifact Registry</h2>
 
-<p>Le depot contient aussi un module <code>terraform-cloud-run-only/</code> pour un socle GCP deja livre. Ce module ne cree ni projet, ni interconnect, ni load balancer, ni service account, ni binding invoker. L'image est supposee deja poussee dans Artifact Registry; le workflow GitHub Actions lance Terraform pour que Cloud Run utilise cette image.</p>
+<p>Le depot contient aussi un module <code>terraform-cloud-run-only/</code> pour un socle GCP deja livre. Ce module ne cree ni projet, ni interconnect, ni load balancer, ni service account, ni binding invoker. Le workflow GitHub Actions peut creer le repository Artifact Registry, construit l'image Docker, la pousse dans Artifact Registry, puis lance Terraform pour que Cloud Run utilise cette image.</p>
 
 <p>Le pipeline manuel <code>.github/workflows/deploy-cloud-run.yml</code> utilise une cle JSON de service account Terraform stockee dans le secret GitHub <code>GCP_TERRAFORM_SA_KEY</code>, puis applique Terraform avec un backend GCS.</p>
 

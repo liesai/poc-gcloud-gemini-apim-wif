@@ -9,7 +9,7 @@ vertex_location = "global"
 name_prefix  = "gemini"
 service_name = "gemini-api"
 
-# Image deja poussee dans Artifact Registry:
+# Image construite/poussee dans Artifact Registry par le pipeline ou deja presente:
 # <region>-docker.pkg.dev/<project_id>/<artifact_registry_repository_id>/<image_name>:<image_tag>
 artifact_registry_repository_id     = "gemini-repo"
 create_artifact_registry_repository = false

@@ -1,8 +1,8 @@
 # Deploiement Cloud Run uniquement avec Artifact Registry
 
-Ce repertoire ajoute un deploiement GCP limite a Cloud Run avec une image deja presente dans Artifact Registry. Il ne cree pas le projet, n'active pas les APIs, ne configure pas l'interconnect et ne configure pas de load balancer.
+Ce repertoire ajoute un deploiement GCP limite a Cloud Run avec une image poussee dans Artifact Registry. Il ne cree pas le projet, n'active pas les APIs, ne configure pas l'interconnect et ne configure pas de load balancer.
 
-Le pipeline GitHub Actions ne construit pas l'image. Il deploie un service Cloud Run qui reference une image Artifact Registry existante.
+Le pipeline GitHub Actions peut creer le repository Artifact Registry, construit l'image Docker, la pousse dans Artifact Registry, puis deploie un service Cloud Run qui reference cette image.
 
 ## Modeles declares
 
@@ -55,5 +55,6 @@ Variables:
 - `GCP_REGION`
 - `VERTEX_LOCATION`
 - `ARTIFACT_REGISTRY_REPOSITORY_ID`
+- `CREATE_ARTIFACT_REGISTRY_REPOSITORY`
 - `TF_STATE_BUCKET`
 - `TF_STATE_PREFIX`

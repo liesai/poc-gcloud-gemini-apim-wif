@@ -216,9 +216,10 @@ Un module separe est disponible dans `terraform-cloud-run-only/` pour deployer u
 
 Le flux cible est:
 
-1. l'image est construite et poussee directement dans Artifact Registry par le processus amont;
-2. GitHub Actions lance Terraform;
-3. Terraform applique uniquement le service Cloud Run, les variables Gemini et l'image Artifact Registry existante.
+1. GitHub Actions cree le repository Artifact Registry si demande;
+2. GitHub Actions construit l'image Docker depuis `app/`;
+3. GitHub Actions pousse l'image dans Artifact Registry;
+4. Terraform applique le service Cloud Run avec les variables Gemini et cette image Artifact Registry.
 
 Modeles Gemini disponibilises:
 
@@ -282,7 +283,8 @@ terraform -chdir=terraform-cloud-run-only apply
 Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 
 - authentification GCP via Workload Identity Federation;
-- utilisation d'une image deja presente dans Artifact Registry;
+- creation optionnelle du repository Artifact Registry;
+- build et push de l'image dans Artifact Registry;
 - `terraform init`, `validate`, puis `apply` sur `terraform-cloud-run-only/`.
 
 Secrets GitHub requis:
@@ -299,6 +301,7 @@ GCP_PROJECT_ID
 GCP_REGION
 VERTEX_LOCATION
 ARTIFACT_REGISTRY_REPOSITORY_ID
+CREATE_ARTIFACT_REGISTRY_REPOSITORY
 TF_STATE_BUCKET
 TF_STATE_PREFIX
 ```
