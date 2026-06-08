@@ -258,7 +258,6 @@ vertex_location = "global"
 service_name = "gemini-api"
 
 artifact_registry_repository_id     = "gemini-repo"
-create_artifact_registry_repository = false
 image_name                          = "gemini-api"
 image_tag                           = "a-remplacer-par-le-sha"
 ```
@@ -283,7 +282,7 @@ terraform -chdir=terraform-cloud-run-only apply
 Le workflow manuel `.github/workflows/deploy-cloud-run.yml` fait:
 
 - authentification GCP via la cle JSON du service account Terraform;
-- creation optionnelle du repository Artifact Registry;
+- verification ou creation optionnelle du repository Artifact Registry avec `gcloud`;
 - build et push de l'image dans Artifact Registry;
 - `terraform init`, `validate`, puis `apply` sur `terraform-cloud-run-only/`.
 

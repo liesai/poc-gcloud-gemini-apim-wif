@@ -38,12 +38,6 @@ variable "artifact_registry_repository_id" {
   type        = string
 }
 
-variable "create_artifact_registry_repository" {
-  description = "Cree le repository Artifact Registry Docker. Mettre false si le socle l'a deja livre."
-  type        = bool
-  default     = false
-}
-
 variable "image_tag" {
   description = "Tag Docker a construire, pousser dans Artifact Registry, puis deployer."
   type        = string

@@ -38,7 +38,7 @@ prefix = "poc-gcloud-gemini/cloud-run"
 
 Le service account Cloud Run doit deja etre gere par le socle. Ce module ne cree pas de service account et ne modifie pas son association; il se concentre sur le service Cloud Run et l'image Artifact Registry.
 
-Si le repository Artifact Registry est deja livre par le socle, garder `create_artifact_registry_repository = false`. Sinon, le module peut le creer avec `create_artifact_registry_repository = true`.
+Le repository Artifact Registry est verifie ou cree par le pipeline GitHub Actions avec `gcloud`, avant le build/push Docker. Terraform ne gere pas ce repository.
 
 ## Pipeline GitHub Actions
 

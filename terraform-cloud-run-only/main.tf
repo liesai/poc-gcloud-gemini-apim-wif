@@ -5,16 +5,6 @@ locals {
   gemini_models_json = jsonencode(var.gemini_models)
 }
 
-resource "google_artifact_registry_repository" "app" {
-  count         = var.create_artifact_registry_repository ? 1 : 0
-  project       = var.project_id
-  location      = var.region
-  repository_id = var.artifact_registry_repository_id
-  description   = "Repository Docker pour Cloud Run Gemini"
-  format        = "DOCKER"
-  labels        = var.labels
-}
-
 resource "google_cloud_run_v2_service" "api" {
   project              = var.project_id
   name                 = local.service_name
@@ -95,7 +85,4 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
 
-  depends_on = [
-    google_artifact_registry_repository.app,
-  ]
 }
