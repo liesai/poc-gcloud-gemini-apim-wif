@@ -32,8 +32,7 @@ jobs:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       REGION: ${{ vars.GCP_REGION }}
       VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION }}
-      ARTIFACTORY_REGISTRY_URL: ${{ vars.ARTIFACTORY_REGISTRY_URL }}
-      ARTIFACT_REMOTE_REPOSITORY_ID: ${{ vars.ARTIFACT_REMOTE_REPOSITORY_ID }}
+      ARTIFACT_REGISTRY_REPOSITORY_ID: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY_ID }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       TF_STATE_PREFIX: ${{ vars.TF_STATE_PREFIX }}
       IMAGE_NAME: gemini-api
@@ -66,34 +65,6 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Resolve Artifactory login server
-        id: artifactory
-        shell: bash
-        run: |
-          registry="${ARTIFACTORY_REGISTRY_URL#http://}"
-          registry="${registry#https://}"
-          echo "login_server=${registry%%/*}" >> "$GITHUB_OUTPUT"
-          echo "image_prefix=${registry}" >> "$GITHUB_OUTPUT"
-
-      - name: Login to Artifactory
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ steps.artifactory.outputs.login_server }}
-          username: ${{ secrets.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
-
-      - name: Build image
-        shell: bash
-        run: |
-          docker build \
-            -t "${{ steps.artifactory.outputs.image_prefix }}/${IMAGE_NAME}:${{ steps.image.outputs.tag }}" \
-            ./app
-
-      - name: Push image
-        shell: bash
-        run: |
-          docker push "${{ steps.artifactory.outputs.image_prefix }}/${IMAGE_NAME}:${{ steps.image.outputs.tag }}"
-
       - name: Write Terraform backend config
         working-directory: terraform-cloud-run-only
         shell: bash
@@ -119,9 +90,8 @@ jobs:
             -var="region=${REGION}" \
             -var="vertex_location=${VERTEX_LOCATION}" \
             -var="service_name=${{ inputs.service_name }}" \
-            -var="artifactory_registry_url=${{ steps.artifactory.outputs.image_prefix }}" \
             -var="image_name=${IMAGE_NAME}" \
             -var="image_tag=${{ steps.image.outputs.tag }}" \
-            -var="artifact_remote_repository_id=${ARTIFACT_REMOTE_REPOSITORY_ID}" \
+            -var="artifact_registry_repository_id=${ARTIFACT_REGISTRY_REPOSITORY_ID}" \
             -var="gemini_default_model=${GEMINI_DEFAULT_MODEL}" \
             -var="gemini_models=[\"gemini-3.5-flash\",\"gemini-2.5-flash\",\"gemini-3.1-flash\",\"gemini-2.5-flash-lite\",\"gemini-3-pro\",\"gemini-2.5-pro\",\"gemini-3.1-pro\",\"gemini-3-flash\"]"

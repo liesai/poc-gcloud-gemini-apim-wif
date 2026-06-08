@@ -9,18 +9,12 @@ vertex_location = "global"
 name_prefix  = "gemini"
 service_name = "gemini-api"
 
-# Image construite dans Artifactory, puis lue par Cloud Run via un repository
-# Artifact Registry remote.
-artifactory_registry_url          = "artifactory.example.com/docker-local"
-image_name                        = "gemini-api"
-image_tag                         = "a-remplacer-par-le-sha"
-artifact_remote_repository_id     = "artifactory-remote"
-create_artifact_remote_repository = false
-
-# Si le remote repository doit s'authentifier sur Artifactory, renseigner les
-# deux valeurs ensemble. Le secret doit deja exister dans Secret Manager.
-# artifactory_username                = "svc-artifactory"
-# artifactory_password_secret_version = "projects/mon-projet-gcp/secrets/artifactory-password/versions/latest"
+# Image deja poussee dans Artifact Registry:
+# <region>-docker.pkg.dev/<project_id>/<artifact_registry_repository_id>/<image_name>:<image_tag>
+artifact_registry_repository_id     = "gemini-repo"
+create_artifact_registry_repository = false
+image_name                          = "gemini-api"
+image_tag                           = "a-remplacer-par-le-sha"
 
 # Modeles Gemini disponibilises.
 gemini_default_model = "gemini-2.5-flash-lite"
@@ -35,11 +29,8 @@ gemini_models = [
   "gemini-3-flash",
 ]
 
-# Cloud Run reste prive par defaut; brancher ici le frontal/LB/API Gateway/APIM existant.
-allow_unauthenticated = false
-invoker_members = [
-  # "serviceAccount:frontal-invoker@mon-projet-gcp.iam.gserviceaccount.com",
-]
+# Cloud Run reste prive par defaut. Les invokers IAM et le service account
+# runtime sont supposes deja geres par le socle.
 
 # Optionnel: secret applicatif si le frontal existant l'envoie via X-Internal-Api-Key.
 enable_internal_api_key = false

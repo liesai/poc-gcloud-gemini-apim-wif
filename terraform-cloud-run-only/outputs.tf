@@ -14,23 +14,18 @@ output "service_url" {
 }
 
 output "image" {
-  description = "Image deployee par Cloud Run via Artifact Registry remote."
+  description = "Image Artifact Registry deployee par Cloud Run."
   value       = local.cloud_run_image
-}
-
-output "artifactory_image" {
-  description = "Image construite et poussee dans Artifactory."
-  value       = local.artifactory_image
 }
 
 output "cloud_run_image" {
-  description = "Image lue par Cloud Run via Artifact Registry remote."
+  description = "Image Artifact Registry lue par Cloud Run."
   value       = local.cloud_run_image
 }
 
-output "artifact_remote_repository" {
-  description = "Repository Artifact Registry remote utilise."
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_remote_repository_id}"
+output "artifact_registry_repository" {
+  description = "Repository Artifact Registry utilise."
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}"
 }
 
 output "gemini_default_model" {

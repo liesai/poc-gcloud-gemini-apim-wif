@@ -27,43 +27,25 @@ variable "service_name" {
   default     = null
 }
 
-variable "artifactory_registry_url" {
-  description = "URL du registry Artifactory sans schema, par exemple artifactory.example.com/docker-local."
-  type        = string
-}
-
 variable "image_name" {
-  description = "Nom de l'image Docker dans Artifactory."
+  description = "Nom de l'image Docker dans Artifact Registry."
   type        = string
   default     = "gemini-api"
 }
 
-variable "artifact_remote_repository_id" {
-  description = "Repository Artifact Registry remote utilise par Cloud Run pour lire Artifactory."
+variable "artifact_registry_repository_id" {
+  description = "Repository Artifact Registry Docker contenant l'image Cloud Run."
   type        = string
 }
 
-variable "create_artifact_remote_repository" {
-  description = "Cree le repository Artifact Registry remote pointant vers Artifactory."
+variable "create_artifact_registry_repository" {
+  description = "Cree le repository Artifact Registry Docker. Mettre false si le socle l'a deja livre."
   type        = bool
   default     = false
 }
 
-variable "artifactory_username" {
-  description = "Utilisateur Artifactory pour le repository remote Artifact Registry. Optionnel."
-  type        = string
-  default     = null
-}
-
-variable "artifactory_password_secret_version" {
-  description = "Secret Manager version contenant le mot de passe Artifactory, par exemple projects/<project>/secrets/<secret>/versions/latest. Optionnel."
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
 variable "image_tag" {
-  description = "Tag Docker a deployer. Le pipeline GitHub Actions le renseigne avec le SHA du commit."
+  description = "Tag Docker existant a deployer depuis Artifact Registry."
   type        = string
 }
 
@@ -86,18 +68,6 @@ variable "gemini_models" {
     "gemini-3.1-pro",
     "gemini-3-flash",
   ]
-}
-
-variable "allow_unauthenticated" {
-  description = "Autorise l'invocation non authentifiee de Cloud Run. Mettre false si un LB/API Gateway/IAM invoker existe deja."
-  type        = bool
-  default     = false
-}
-
-variable "invoker_members" {
-  description = "Membres IAM autorises a invoquer Cloud Run, par exemple serviceAccount:xxx@project.iam.gserviceaccount.com."
-  type        = set(string)
-  default     = []
 }
 
 variable "enable_internal_api_key" {
