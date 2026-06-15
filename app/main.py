@@ -1,5 +1,6 @@
 import os
 import hmac
+import logging
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -17,6 +18,8 @@ MODEL_IDS = [
     if model.strip()
 ]
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Gemini Cloud Run POC", version="0.1.0")
 
@@ -107,7 +110,27 @@ def generate(request: GenerateRequest) -> GenerateResponse:
             ),
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        exception_type = type(exc).__name__
+        exception_message = str(exc)
+        logger.error(
+            "vertex_generate_content_failed model=%s location=%s exception_type=%s exception_message=%s",
+            model,
+            LOCATION,
+            exception_type,
+            exception_message,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "vertex_generate_content_failed",
+                "message": (
+                    "The backend reached Cloud Run but failed while calling "
+                    "Vertex AI Gemini."
+                ),
+                "exception_type": exception_type,
+                "exception_message": exception_message,
+            },
+        ) from exc
 
     return GenerateResponse(
         model=model,
