@@ -33,20 +33,64 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["prompt"],
+                "additionalProperties": true,
                 "properties": {
                   "prompt": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Legacy text prompt. Use either prompt or contents."
+                  },
+                  "contents": {
+                    "description": "Gemini contents payload: string, object, or array.",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
                   },
                   "model": {
                     "type": "string"
                   },
+                  "config": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "GenerateContentConfig options such as thinking_config, response_mime_type, response_schema, top_p, top_k, candidate_count, and stop_sequences."
+                  },
+                  "system_instruction": {
+                    "description": "Gemini system instruction, passed through to GenerateContentConfig."
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {},
+                    "description": "Gemini tools passed through to GenerateContentConfig."
+                  },
+                  "tool_config": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "safety_settings": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "raw_response": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "temperature": {
                     "type": "number",
-                    "format": "float"
+                    "format": "float",
+                    "description": "Legacy shortcut merged into config.temperature when config.temperature is absent."
                   },
                   "max_output_tokens": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Legacy shortcut merged into config.max_output_tokens when config.max_output_tokens is absent."
                   }
                 }
               }
@@ -69,7 +113,19 @@
                     },
                     "text": {
                       "type": "string"
-                    }
+                    },
+                    "candidates": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "finish_reason": {},
+                    "safety_ratings": {},
+                    "usage_metadata": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "prompt_feedback": {},
+                    "raw_response": {}
                   }
                 }
               }

@@ -6,7 +6,7 @@ Le pipeline GitHub Actions peut creer le repository Artifact Registry, construit
 
 ## Modeles declares
 
-Les modeles sont fournis a Cloud Run via `GEMINI_MODELS` et `GEMINI_MODELS_JSON`:
+Les modeles sont fournis a Cloud Run via `GEMINI_MODELS` et `GEMINI_MODELS_JSON` a titre informatif:
 
 - `gemini-3.5-flash`
 - `gemini-2.5-flash`
@@ -17,7 +17,7 @@ Les modeles sont fournis a Cloud Run via `GEMINI_MODELS` et `GEMINI_MODELS_JSON`
 - `gemini-3.1-pro`
 - `gemini-3-flash`
 
-Le modele par defaut reste configurable par `gemini_default_model`. L'API accepte aussi un champ optionnel `model` sur `POST /generate`; il doit faire partie de cette liste.
+Le modele par defaut reste configurable par `gemini_default_model`. L'API accepte aussi un champ optionnel `model` sur `POST /generate`; Cloud Run relaie la valeur demandee sans la valider contre cette liste. Les controles de modeles autorises doivent etre appliques par le frontal, typiquement APIM avec `allowed_gemini_models`.
 
 ## Utilisation
 
@@ -56,7 +56,3 @@ Variables:
 - `ARTIFACT_REGISTRY_REPOSITORY_ID`
 - `TF_STATE_BUCKET`
 - `TF_STATE_PREFIX`
-
-Variable optionnelle:
-
-- `CREATE_ARTIFACT_REGISTRY_REPOSITORY` vaut `false` par defaut si absente.

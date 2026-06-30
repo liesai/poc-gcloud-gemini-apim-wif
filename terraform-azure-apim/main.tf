@@ -17,12 +17,17 @@ locals {
     client_auth_allowed_app_ids = var.client_auth_allowed_app_ids
     client_auth_app_id_claim    = var.client_auth_app_id_claim
   })
+  model_policy = templatefile("${path.module}/policy-model-allowlist.xml.tftpl", {
+    allowed_models       = var.allowed_gemini_models
+    allowed_models_guard = join("|", concat([""], var.allowed_gemini_models, [""]))
+  })
   apim_wif_managed_identity_client_id = var.create_user_assigned_identity ? azurerm_user_assigned_identity.apim[0].client_id : null
   apim_invoker_principal_id           = var.create_user_assigned_identity ? azurerm_user_assigned_identity.apim[0].principal_id : azurerm_api_management.this.identity[0].principal_id
   apim_invoker_tenant_id              = var.create_user_assigned_identity ? azurerm_user_assigned_identity.apim[0].tenant_id : azurerm_api_management.this.identity[0].tenant_id
   policy_xml = var.backend_auth_mode == "wif" ? templatefile("${path.module}/policy-wif.xml.tftpl", {
     cloud_run_url                       = local.cloud_run_url
     client_auth_policy                  = local.client_auth_policy
+    model_policy                        = local.model_policy
     entra_wif_resource                  = var.entra_wif_resource
     google_sts_audience                 = var.google_sts_audience
     google_sts_audience_encoded         = urlencode(var.google_sts_audience)
@@ -31,6 +36,7 @@ locals {
     }) : templatefile("${path.module}/policy-shared-secret.xml.tftpl", {
     cloud_run_url      = local.cloud_run_url
     client_auth_policy = local.client_auth_policy
+    model_policy       = local.model_policy
     backend_api_key    = var.backend_api_key
   })
 }

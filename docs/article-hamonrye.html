@@ -12,7 +12,7 @@
   APIM --&gt; STS[Google STS&lt;br/&gt;Workload Identity Federation]
   APIM --&gt; IAMCreds[Google IAM Credentials&lt;br/&gt;generateIdToken]
   APIM --&gt; Run[Cloud Run prive&lt;br/&gt;FastAPI]
-  Run --&gt; Gemini[Vertex AI&lt;br/&gt;Gemini allowlist]
+  Run --&gt; Gemini[Vertex AI&lt;br/&gt;Gemini]
 
   TerraformGCP[Terraform GCP] --&gt; WIF[Workload Identity Pool&lt;br/&gt;OIDC Azure provider]
   TerraformGCP --&gt; Run
@@ -87,9 +87,9 @@ POST /generate</code></pre>
   "model": "gemini-2.5-flash-lite"
 }</code></pre>
 
-<p>Le champ <code>model</code> est optionnel pour compatibilite. S'il est absent, l'application utilise <code>GEMINI_MODEL</code>. S'il est present, il doit appartenir a l'allowlist <code>GEMINI_MODELS</code>.</p>
+<p>Le champ <code>model</code> est optionnel pour compatibilite. S'il est absent, l'application utilise <code>GEMINI_MODEL</code>. Cloud Run ne valide plus le modele contre <code>GEMINI_MODELS</code>; ce controle est applique par APIM quand <code>allowed_gemini_models</code> est renseigne.</p>
 
-<p>Modeles declares dans cette version:</p>
+<p>Modeles declares dans cette version a titre informatif:</p>
 
 <pre class="code-block"><code class="language-text">gemini-3.5-flash
 gemini-2.5-flash
@@ -157,9 +157,9 @@ curl -sS \
   -d '{"prompt":"Reponds en francais en une phrase: valide le workflow APIM vers Cloud Run prive via WIF.","model":"gemini-2.5-flash-lite"}' \
   "$APIM_URL" | jq .</code></pre>
 
-<p><code>POST /gemini/generate</code> via APIM retourne <code>200 OK</code> avec un JSON contenant <code>model</code>, <code>location</code> et <code>text</code>.</p>
+<p><code>POST /gemini/generate</code> via APIM retourne <code>200 OK</code> avec un JSON contenant au minimum <code>model</code>, <code>location</code> et <code>text</code>, plus les metadonnees Gemini disponibles.</p>
 
-<p>La selection dynamique d'un autre modele autorise se teste de la meme maniere:</p>
+<p>La selection dynamique d'un autre modele se teste de la meme maniere. Cloud Run le relaie; APIM refuse les modeles non autorises quand <code>allowed_gemini_models</code> est renseigne.</p>
 
 <pre class="code-block"><code class="language-bash">./scripts/call_apim.sh \
   "Reponds en francais en une phrase: valide le choix dynamique du modele." \
