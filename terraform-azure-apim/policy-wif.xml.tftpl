@@ -2,6 +2,7 @@
   <inbound>
     <base />
 ${client_auth_policy}
+${model_policy}
     <set-backend-service base-url="${cloud_run_url}" />
     <authentication-managed-identity resource="${entra_wif_resource}"%{ if apim_wif_managed_identity_client_id != null } client-id="${apim_wif_managed_identity_client_id}"%{ endif } output-token-variable-name="azureToken" />
     <send-request mode="new" response-variable-name="stsResponse" timeout="20" ignore-error="false">
@@ -19,7 +20,7 @@ ${client_auth_policy}
           "&amp;subject_token=" + System.Uri.EscapeDataString((string)context.Variables["azureToken"]);
       }</set-body>
     </send-request>
-    <set-variable name="googleAccessToken" value="@((string)((IResponse)context.Variables["stsResponse"]).Body.As<JObject>()["access_token"])" />
+    <set-variable name="googleAccessToken" value="@((string)((IResponse)context.Variables[&quot;stsResponse&quot;]).Body.As&lt;JObject&gt;()[&quot;access_token&quot;])" />
     <send-request mode="new" response-variable-name="idTokenResponse" timeout="20" ignore-error="false">
       <set-url>https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${google_service_account_email}:generateIdToken</set-url>
       <set-method>POST</set-method>
@@ -34,7 +35,7 @@ ${client_auth_policy}
         "includeEmail": true
       }</set-body>
     </send-request>
-    <set-variable name="googleIdToken" value="@((string)((IResponse)context.Variables["idTokenResponse"]).Body.As<JObject>()["token"])" />
+    <set-variable name="googleIdToken" value="@((string)((IResponse)context.Variables[&quot;idTokenResponse&quot;]).Body.As&lt;JObject&gt;()[&quot;token&quot;])" />
     <set-header name="Authorization" exists-action="override">
       <value>@("Bearer " + (string)context.Variables["googleIdToken"])</value>
     </set-header>

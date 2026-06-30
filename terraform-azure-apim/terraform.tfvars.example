@@ -29,3 +29,9 @@ backend_auth_mode = "wif"
 location              = "canadacentral"
 api_path              = "gemini"
 subscription_required = false
+
+# Optionnel: controle des modeles cote APIM. Liste vide = pas de filtrage.
+# allowed_gemini_models = [
+#   "gemini-2.5-flash-lite",
+#   "gemini-2.5-flash",
+# ]

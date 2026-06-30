@@ -1,0 +1,24 @@
+%{ if length(allowed_models) > 0 ~}
+    <choose>
+      <when condition="@{
+        if (context.Operation.Id != &quot;generate&quot;) {
+          return false;
+        }
+        var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+        var model = (string)body[&quot;model&quot;];
+        if (System.String.IsNullOrEmpty(model)) {
+          return false;
+        }
+        var allowedModels = &quot;${allowed_models_guard}&quot;;
+        return !allowedModels.Contains(&quot;|&quot; + model + &quot;|&quot;);
+      }">
+        <return-response>
+          <set-status code="400" reason="Unsupported model" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>{"error":"unsupported_model","message":"The requested Gemini model is not allowed by APIM."}</set-body>
+        </return-response>
+      </when>
+    </choose>
+%{ endif ~}

@@ -32,7 +32,6 @@ jobs:
       REGION: ${{ vars.GCP_REGION }}
       VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION }}
       ARTIFACT_REGISTRY_REPOSITORY_ID: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY_ID }}
-      CREATE_ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.CREATE_ARTIFACT_REGISTRY_REPOSITORY }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       TF_STATE_PREFIX: ${{ vars.TF_STATE_PREFIX }}
       IMAGE_NAME: gemini-api
@@ -88,15 +87,12 @@ jobs:
             --project="${PROJECT_ID}" \
             --location="${REGION}" >/dev/null 2>&1; then
             echo "Artifact Registry repository already exists: ${ARTIFACT_REGISTRY_REPOSITORY_ID}"
-          elif [[ "${CREATE_ARTIFACT_REGISTRY_REPOSITORY:-false}" == "true" ]]; then
+          else
             gcloud artifacts repositories create "${ARTIFACT_REGISTRY_REPOSITORY_ID}" \
               --project="${PROJECT_ID}" \
               --location="${REGION}" \
               --repository-format=docker \
               --description="Repository Docker pour Cloud Run Gemini"
-          else
-            echo "Artifact Registry repository does not exist and CREATE_ARTIFACT_REGISTRY_REPOSITORY is not true." >&2
-            exit 1
           fi
 
       - name: Configure Docker for Artifact Registry

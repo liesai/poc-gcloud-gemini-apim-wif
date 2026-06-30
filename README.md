@@ -2,6 +2,8 @@
 
 Cette POC deploie une petite API Python sur Google Cloud Run. L'API expose `POST /generate`, appelle Gemini via Vertex AI, puis retourne la reponse du modele.
 
+Le contrat de service complet de l'API est disponible dans [docs/service-contract.md](docs/service-contract.md).
+
 La version validee expose l'API a travers Azure API Management. Cloud Run n'est pas public: APIM utilise sa managed identity Azure, l'echange via Google Workload Identity Federation, genere un ID token Google, puis appelle Cloud Run avec IAM.
 
 Le deploiement est pilote par Terraform afin de pouvoir tout supprimer avec `terraform destroy`.
@@ -221,7 +223,7 @@ Le flux cible est:
 3. GitHub Actions pousse l'image dans Artifact Registry;
 4. Terraform applique le service Cloud Run avec les variables Gemini et cette image Artifact Registry.
 
-Modeles Gemini disponibilises:
+Modeles Gemini declares pour information:
 
 ```text
 gemini-3.5-flash
@@ -234,7 +236,9 @@ gemini-3.1-pro
 gemini-3-flash
 ```
 
-L'API accepte maintenant un champ optionnel `model` sur `POST /generate`. Si le champ est absent, elle utilise `GEMINI_MODEL`. Si le modele demande n'est pas dans `GEMINI_MODELS`, l'API retourne `400`.
+L'API accepte un champ optionnel `model` sur `POST /generate`. Si le champ est absent, elle utilise `GEMINI_MODEL`. Cloud Run ne valide plus le modele contre `GEMINI_MODELS`: le filtrage des modeles autorises est porte par APIM via `allowed_gemini_models`.
+
+Le payload peut rester minimal pour compatibilite ou utiliser les options Gemini avancees:
 
 Exemple:
 
@@ -242,6 +246,40 @@ Exemple:
 curl -sS \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Resume ce besoin en une phrase.","model":"gemini-2.5-flash"}' \
+  "$URL/generate" | jq .
+```
+
+Exemple avec thinking et metadonnees brutes:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Resume ce besoin en une phrase.",
+    "model": "gemini-2.5-flash",
+    "config": {
+      "thinking_config": {
+        "thinking_budget": 1024
+      },
+      "max_output_tokens": 512
+    },
+    "raw_response": true
+  }' \
+  "$URL/generate" | jq .
+```
+
+Exemple de sortie JSON controlee par Gemini:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Retourne un objet JSON avec les cles verdict et raison.",
+    "model": "gemini-2.5-flash",
+    "config": {
+      "response_mime_type": "application/json"
+    }
+  }' \
   "$URL/generate" | jq .
 ```
 
@@ -303,14 +341,6 @@ TF_STATE_BUCKET
 TF_STATE_PREFIX
 ```
 
-Variable GitHub optionnelle:
-
-```text
-CREATE_ARTIFACT_REGISTRY_REPOSITORY
-```
-
-Si elle est absente, le workflow utilise `false`.
-
 Le workflow se lance manuellement depuis GitHub Actions. Par defaut, le tag image est le SHA du commit; il peut etre surcharge par l'input `image_tag`.
 
 ## Tests
@@ -324,9 +354,22 @@ cd /home/marc/poc-gcloud-gemini
 URLs APIM actuellement deployeees:
 
 ```text
-https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/status
-https://apim-poc-gemini-k6hh7b.azure-api.net/gemini/generate
+https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/status
+https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/generate
 ```
+
+Environnement remonte le 2026-06-30:
+
+```text
+GCP project: poc-gemini-169df5
+Cloud Run: https://poc-gemini-api-eja5oej25q-uc.a.run.app
+Cloud Run revision: poc-gemini-api-00003-kz4
+APIM: https://apim-poc-gemini-sz3ka6.azure-api.net
+Mode backend APIM: shared_secret
+Allowed models APIM: gemini-2.5-flash-lite, gemini-2.5-flash
+```
+
+Remarque: la stack WIF APIM -> Cloud Run a ete montee puis testee, mais APIM ne transmettait pas encore un ID token Cloud Run valide. La demonstration fonctionnelle courante utilise le mode `shared_secret`: Cloud Run est invocable au niveau IAM, mais refuse les appels sans `X-Internal-Api-Key`; APIM injecte cette cle.
 
 Verifier que Cloud Run direct est refuse:
 
@@ -339,7 +382,7 @@ curl -sS -o /tmp/direct -w '%{http_code}\n' \
   "$URL/generate"
 ```
 
-Resultat attendu en mode WIF prive: `403`.
+Resultat attendu en mode WIF prive: `403`. Resultat attendu en mode `shared_secret`: `401` si le header `X-Internal-Api-Key` est absent.
 
 Tester le statut via APIM:
 
@@ -376,14 +419,127 @@ curl -sS \
   "$APIM_URL" | jq .
 ```
 
-Resultat attendu: `200 OK` avec un JSON contenant `model`, `location` et `text`.
+Resultat attendu: `200 OK` avec un JSON contenant au minimum `model`, `location` et `text`, plus les champs Gemini disponibles comme `candidates`, `usage_metadata`, `finish_reason` et `safety_ratings`.
 
-Tester explicitement la selection dynamique avec un autre modele autorise:
+Tester explicitement la selection dynamique avec un autre modele. Cloud Run le relaie; APIM refuse les modeles non autorises quand `allowed_gemini_models` est renseigne:
 
 ```bash
 ./scripts/call_apim.sh \
   "Reponds en francais en une phrase: valide le choix dynamique du modele." \
   "gemini-2.5-flash"
+```
+
+### Demonstration des nouvelles fonctionnalites
+
+Appel legacy `prompt`:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Reponds en francais en une phrase: valide le mode legacy prompt vers Gemini.",
+    "model": "gemini-2.5-flash-lite",
+    "max_output_tokens": 128
+  }' \
+  "https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/generate" | jq .
+```
+
+Retour observe:
+
+```json
+{
+  "model": "gemini-2.5-flash-lite",
+  "location": "global",
+  "text": "Le mode legacy prompt est valide pour Gemini.",
+  "finish_reason": "STOP",
+  "usage_metadata": {
+    "prompt_token_count": 16,
+    "candidates_token_count": 10,
+    "total_token_count": 26,
+    "traffic_type": "ON_DEMAND"
+  }
+}
+```
+
+Appel avec `thinking_config` et `raw_response`:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Reponds en francais en une phrase: confirme que la configuration thinking_config est acceptee.",
+    "model": "gemini-2.5-flash",
+    "config": {
+      "thinking_config": {
+        "thinking_budget": 512
+      },
+      "max_output_tokens": 160
+    },
+    "raw_response": true
+  }' \
+  "https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/generate" | jq '{model, text, finish_reason, usage_metadata, has_raw_response:(.raw_response != null)}'
+```
+
+Retour observe:
+
+```json
+{
+  "model": "gemini-2.5-flash",
+  "text": "Oui, la configuration `thinking_config` est acceptee.",
+  "finish_reason": "STOP",
+  "usage_metadata": {
+    "prompt_token_count": 19,
+    "candidates_token_count": 13,
+    "thoughts_token_count": 29,
+    "total_token_count": 61,
+    "traffic_type": "ON_DEMAND"
+  },
+  "has_raw_response": true
+}
+```
+
+Appel avec sortie JSON controlee:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Retourne uniquement un objet JSON avec les cles verdict et raison pour: le wrapper expose les options Gemini avancees.",
+    "model": "gemini-2.5-flash-lite",
+    "config": {
+      "response_mime_type": "application/json",
+      "max_output_tokens": 128
+    }
+  }' \
+  "https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/generate" | jq '{model, text, parsed_text:(.text | fromjson?)}'
+```
+
+Retour observe:
+
+```json
+{
+  "model": "gemini-2.5-flash-lite",
+  "text": "{\n  \"verdict\": \"Pass\",\n  \"raison\": \"Le wrapper expose les options avancees de Gemini, permettant aux utilisateurs de tirer parti de toutes les fonctionnalites disponibles.\"\n}",
+  "parsed_text": {
+    "verdict": "Pass",
+    "raison": "Le wrapper expose les options avancees de Gemini, permettant aux utilisateurs de tirer parti de toutes les fonctionnalites disponibles."
+  }
+}
+```
+
+Modele refuse par APIM:
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"test","model":"gemini-1.5-pro"}' \
+  "https://apim-poc-gemini-sz3ka6.azure-api.net/gemini/generate"
+```
+
+Retour observe:
+
+```json
+{"error":"unsupported_model","message":"The requested Gemini model is not allowed by APIM."}
 ```
 
 ## Alternative: secret partage

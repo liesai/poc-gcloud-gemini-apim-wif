@@ -92,6 +92,12 @@ variable "subscription_required" {
   default     = false
 }
 
+variable "allowed_gemini_models" {
+  description = "Modeles Gemini autorises par APIM. Si la liste est vide, APIM ne filtre pas le champ model."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_client_sp_auth" {
   description = "Exige un token Entra ID client valide avant d'appeler le backend Cloud Run."
   type        = bool
